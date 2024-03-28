@@ -66,74 +66,46 @@ class MyModel:
         self.model = tf.keras.models.load_model('best_model.h5')
 
 
-def load_data():
-    data = pd.read_csv('Data/train.csv')
-    test = pd.read_csv('Data/test.csv')
-    return data, test
-
-
-# Changing the data type of the columns to category and then to numerical values for the model
-def data_categories(data):
-    for column in data.columns:
-        if data[column].dtype == 'object':
-            data[column] = data[column].astype('category')
-            data[column] = data[column].cat.codes
-
+def read_csv(file_path):
+    data = pd.read_csv(file_path)
     return data
 
-
-def Process_Data(data):
-    data = data_categories(data)
-
-    # Filling the missing values with the mean of the column
-    data = data.fillna(0)
-
-    # Removing the ID column as it is not useful for the model
-    data = data.drop('Id', axis=1)
-
-    # Splitting the data into features and labels
-    X_train = data.drop('SalePrice', axis=1)
-    y_train = data['SalePrice']
-
-    print("X_train shape: ", X_train.shape)
-    print("y_train shape: ", y_train.shape)
-
-    return X_train, y_train
-
-
-def Process_Test_Data(test):
-    test = data_categories(test)
-
-    # Filling the missing values with the mean of the column
-    test = test.fillna(0)
-
-    # Removing the ID column as it is not useful for the model
-    test = test.drop('Id', axis=1)
-
-    print("Test shape: ", test.shape)
-
-    return test
-
-
-def Visualize_Data(data):
-    plt.figure(figsize=(7, 6))
-    sns.distplot(data['SalePrice'], color='g', bins=100)
-    plt.show()
-
-
+# Data Summary Function
 def Data_Summary(data):
+    print("Data Summary")
+    print("=====================================")
+    print("First 5 rows")
     print(data.describe())
+    print("=====================================")
+    print("Data types")
     print(data.info())
+    print("=====================================")
+    print("Data count")
     print(data.count())
+    print("=====================================")
+    print("Missing values")
     print(data.isnull().sum())
-
+    print("=====================================")
+    print("Data shape")
     print(data.shape)
+    print("=====================================")
+    print("Unique values in each column")
     print(data.nunique())
-    print(data['SalePrice'].describe())
+    print("=====================================")
+
+    # describe the last column
+    print("Last column description")
+    print(data.iloc[:, -1].describe())
+    # Visualize the last column
+    temp_data = data.drop(data.index[0])
+    plt.figure(figsize=(7, 6))
+    plt.bar(temp_data.iloc[:, -1].unique(), temp_data.iloc[:, -1].value_counts())
+    plt.show(block=True)
+
+    print("---------------------------------------------------------------------------------")
 
 
-def Machine_Learning(X_train, y_train):
-    X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
+def Machine_Learning(X_train, y_train, X_test, y_test):
 
     log_reg = lm.LogisticRegression()
     log_reg.fit(X_train, y_train)
@@ -185,49 +157,101 @@ def Machine_Learning(X_train, y_train):
 
     return models, scores
 
+
+def Preprocessing(data):
+    print("Preprocessing")
+    print("=====================================")
+    std_scaler = StandardScaler()
+
+    # # change first column type to str
+    # data.iloc[:, 0] = data.iloc[:, 0].astype(str)
 #
-# return models, scores
+    # # change values in the first column to categorise
+    # data.iloc[:, 0] = data.iloc[:, 0].astype('category')
+
+    X_train, X_test, y_train, y_test = train_test_split(data.iloc[:, :-1], data.iloc[:, -1], test_size=0.2, random_state=42)
+    print("X_train shape: ", X_train.shape)
+    print("X_test shape: ", X_test.shape)
+    print("y_train shape: ", y_train.shape)
+    print("y_test shape: ", y_test.shape)
+
+    print(X_train.head())
+    print(X_test.head())
+    print(y_train.head())
+    print(y_test.head())
+    print("---------------------------------------------------------------------------------")
+
+    return X_train, X_test, y_train, y_test
+
+
+# In this function deletes the rows that have the repeated V1 and v2 values compared to the last row
+def Delete_rows(data):
+    print("Deleting rows")
+    print("=====================================")
+    data = data.drop_duplicates(subset=['V1', 'V2'], keep='last')
+    print(data.head())
+    print("---------------------------------------------------------------------------------")
+    return data
+
+# in this function replaces the values in V1 with categorical values
+def Process_Data(data):
+    print("Processing Data")
+    print("=====================================")
+
+    data['V1'] = data['V1'].astype('category')
+    data['V1'] = data['V1'].cat.codes
+
+    data['V2'] = data['V2'].astype('category')
+    data['V2'] = data['V2'].cat.codes
+
+    print(data.head())
+    print("---------------------------------------------------------------------------------")
+    return data
+
+# Create a dataframe with only 0's in V1 and V2 starts from 0 to 250, no V3
+def Create_Data():
+    print("Creating Data")
+    print("=====================================")
+
+    data = pd.DataFrame(columns=['V1', 'V2'])
+
+    for i in range(0, 251):
+        data = data._append({'V1': 0, 'V2': i}, ignore_index=True)
+
+    print(data.head())
+    print("---------------------------------------------------------------------------------")
+    return data
 
 
 if __name__ == '__main__':
-    data, test = load_data()
-    X_train, y_train = Process_Data(data)
-    X_test = Process_Test_Data(test)
+    IPD = read_csv("Data/IPD.csv")
+    # progression = read_csv("Data/progression.csv")
+    IPD = Delete_rows(IPD)
+    IPD = Process_Data(IPD)
 
-    # Scaling the data using StandardScaler to normalize the data
-    Scaler = StandardScaler()
-    X_train = Scaler.fit_transform(X_train)
-    X_test = Scaler.transform(X_test)
+    # saveIPD as a csv
+    IPD.to_csv("Data/IPDtest.csv", index=False)
 
-    models, scores = Machine_Learning(X_train, y_train)
+    Test_data = Create_Data()
+    # print("-------------------------------------------------------------------------------------------------")
+    # Data_Summary(progression)
+
+    # print("IPD: ", IPD.head())
+
+    X_train, X_test, y_train, y_test = Preprocessing(IPD)
+#
+    models, scores = Machine_Learning(X_train, y_train, X_test, y_test)
 
     print("Models: ", models)
     print("Scores: ", scores)
-    best_model = models[scores.index(max(scores))]
-    print("Best Model: ", best_model)
 
-    # Predicting the test data
-    test_predictions = best_model.predict(X_test)
-    print("Test Predictions: ", test_predictions)
+    Test_data_y = models[0].predict(Test_data)
+    print("Test Data: ", Test_data)
+    print("Test Data Predictions: ", Test_data_y)
 
-    print(X_test.shape)
-    test_predictions = []
-    print("Predicting the test data")
-    for i in range(X_test.shape[0]):
-        prediction = best_model.predict(X_test[i:i + 1])[0]
-        test_predictions.append(prediction)
-    print("Test Predictions: ", test_predictions)
-
-    test['SalePrice'] = test_predictions
-    test[['Id', 'SalePrice']].to_csv('Data/predictions_myModel.csv', index=False)
-    print("Predictions saved to predictions.csv")
-
-    model = MyModel(input_shape=(X_train.shape[1],))  # Pass the input shape
-    model.train(X_train, y_train, epochs=1000, batch_size=32)
-    test_predictions = model.predict(X_test)
-
-    # Saving the predictions to a csv file
-    # Only write the ID of teh test data and the predictions
-    test['SalePrice'] = test_predictions
-    test[['Id', 'SalePrice']].to_csv('Data/predictions_myModel.csv', index=False)
-    print("Predictions saved to predictions_myModel.csv")
+    # save them into a csv in first column months from 0 to 250 and in the second column the predictions
+    Test_data = pd.DataFrame(Test_data)
+    Test_data = Test_data.rename(columns={0: 'V1', 1: 'ID'})
+    Test_data.drop(columns=['V1'], inplace=True)
+    Test_data['Predictions'] = Test_data_y
+    Test_data.to_csv("Data/Test_data.csv", index=False)
